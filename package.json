@@ -14,8 +14,8 @@
   "contributes": {
     "commands": [
       {
-        "command": "nuget-package-manager.helloWorld",
-        "title": "Hello World"
+        "command": "nuget-package-manager.packageUpdate",
+        "title": "NuGet: Package Update"
       }
     ]
   },
