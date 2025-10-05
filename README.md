@@ -11,6 +11,7 @@ A Visual Studio Code extension for managing NuGet packages in your .NET projects
   - Shows when the same package is used by multiple projects (potentially with different versions)
   - **Highlights version conflicts in red** when the same package has different versions across projects
   - **Interactive version resolution**: Click on any conflicted version to standardize that version across all projects
+  - **Consistent confirmation dialogs**: Custom webview dialogs with scrollable project lists for all confirmations
   - Real-time search filtering across package names, versions, and projects
 
 ## Usage
@@ -29,7 +30,21 @@ A Visual Studio Code extension for managing NuGet packages in your .NET projects
 
 This extension does not currently contribute any settings.
 
+## Development
+
+This extension is developed using TypeScript and Webpack. See `IMPLEMENTATION.md` for technical details.
+
+**Note for AI agents**: Do not create `TESTING.md` or `UI_MOCKUP.md` or `IMPLEMENATION.md` files - these have been intentionally removed and should not be recreated.
+
 ## Release Notes
+
+### 0.0.2
+
+Enhanced version conflict resolution:
+
+- **Consistent confirmation dialogs**: Custom webview dialogs with scrollable project lists for all confirmations
+- **Interactive version resolution**: Click on any conflicted version to standardize that version across all projects
+- **Version conflict highlighting**: Highlights packages in red when different versions are used across projects
 
 ### 0.0.1
 

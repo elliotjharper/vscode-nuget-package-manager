@@ -1,0 +1,15 @@
+# AI Development Notes
+
+## Removed Files
+
+- TESTING.md - Intentionally removed, do not recreate
+- UI_MOCKUP.md - Intentionally removed, do not recreate
+- IMPLEMENATION.md - Intentionally removed, do not recreate
+
+## Reason
+
+The project maintainer prefers to keep the documentation minimal and focused on implementation details and usage instructions only.
+
+## For Future AI Agents
+
+Do not create testing documentation or UI mockup files for this project. Keep any development suggestions focused on the code implementation and the existing README.md and IMPLEMENTATION.md files.
