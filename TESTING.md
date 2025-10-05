@@ -34,8 +34,23 @@
   - Each package shows: name, and for each consumer: version and project on one line (format: "version - project")
   - Packages that are used by multiple projects show multiple consumer entries
   - **Version conflicts are highlighted in red** when the same package has different versions across projects
+  - **Hovering over conflicted versions shows tooltip**: "Inconsistent versions detected, click to choose this version in all listed projects"
 
-#### Scenario 4: Search functionality
+#### Scenario 4: Version conflict resolution
+
+- **Setup**: Have packages with version conflicts (like Serilog in the test workspace)
+- **Steps**:
+  1. Hover over a red-highlighted version entry
+  2. Observe the tooltip that appears
+  3. Click on the version entry
+  4. Observe the confirmation message
+- **Expected**:
+  - Tooltip appears on hover with instructions
+  - Clicking updates all .csproj files to use the selected version
+  - Success message shows "Updated [PackageName] to version [Version] in all projects"
+  - Package list refreshes to show no more conflicts for that package
+
+#### Scenario 5: Search functionality
 
 - **Setup**: Have the webview open with multiple packages
 - **Steps**:
@@ -46,7 +61,7 @@
   - Only packages matching the search term are shown
   - Search works across package names, versions, and project files
 
-#### Scenario 5: Empty workspace
+#### Scenario 6: Empty workspace
 
 - **Setup**: Open an empty workspace or one without .csproj files
 - **Steps**: Run "NuGet: Package Update" command
@@ -105,6 +120,7 @@ When opening the test workspace above, you should see 5 unique packages:
 5. **AutoMapper**
    - 12.0.1 - TestProject2.csproj
 
-Note: 
+Note:
+
 - Newtonsoft.Json appears as one package with two consumers (both projects using same version).
 - Serilog appears with version conflict highlighting because different versions are used across projects.

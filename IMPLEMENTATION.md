@@ -64,6 +64,19 @@ The webview uses VSCode theme variables for consistent styling:
 - Responsive design
 - Clear visual hierarchy showing package → consumers relationship
 - **Version conflict highlighting**: Uses `var(--vscode-errorForeground)` to highlight packages with version conflicts
+- **Interactive tooltips**: CSS-based tooltips with hover states for version conflict resolution
+- **Click handlers**: JavaScript event handling for version standardization across projects
+
+### 8. Version Conflict Resolution
+
+Interactive feature allowing users to resolve version conflicts:
+
+- Detects packages with multiple versions across projects
+- Provides visual feedback with red highlighting
+- Shows tooltips on hover with instructions
+- Handles click events to update all .csproj files
+- Uses regex-based file content replacement
+- Provides user feedback via VS Code notifications
 
 ## File Structure
 
@@ -102,6 +115,18 @@ Extracts PackageReference elements from csproj XML.
 ### `getWebviewContent(packages)`
 
 Generates HTML for the webview with embedded package data.
+
+### `updatePackageVersions(packageName, targetVersion)`
+
+Orchestrates the update of package versions across all projects:
+
+1. Finds all .csproj files in workspace
+2. Updates each file containing the specified package
+3. Shows success/error notifications
+
+### `updatePackageVersionInFile(filePath, packageName, targetVersion)`
+
+Updates a specific .csproj file to use the target version for a package using regex replacement.
 
 ## Technical Details
 

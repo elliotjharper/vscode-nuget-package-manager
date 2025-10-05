@@ -118,6 +118,7 @@ When no packages are found:
 - Real-time filtering as user types
 - Smooth, instant updates (no loading states needed)
 - **Version conflict highlighting**: When a package has different versions across projects, all consumer entries for that package are highlighted in red
+- **Interactive version resolution**: Hover over conflicted versions to see tooltip, click to standardize that version across all projects
 
 ## Accessibility
 

@@ -44,13 +44,22 @@ export function activate(context: vscode.ExtensionContext) {
 
       // Handle messages from the webview
       panel.webview.onDidReceiveMessage(
-        (message) => {
+        async (message) => {
           switch (message.command) {
             case "search":
               const filtered = filterPackages(packageMap, message.text);
               panel.webview.postMessage({
                 command: "updateResults",
                 packages: Array.from(filtered.values()),
+              });
+              break;
+            case "updatePackageVersions":
+              await updatePackageVersions(message.packageName, message.targetVersion);
+              // Refresh the package list
+              const refreshedPackages = await getInstalledPackages();
+              panel.webview.postMessage({
+                command: "refreshPackages",
+                packages: Array.from(refreshedPackages.values()),
               });
               break;
           }
@@ -191,6 +200,60 @@ function filterPackages(
   return filtered;
 }
 
+async function updatePackageVersions(packageName: string, targetVersion: string): Promise<void> {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+
+  if (!workspaceFolders) {
+    vscode.window.showErrorMessage("No workspace folder is open");
+    return;
+  }
+
+  try {
+    for (const folder of workspaceFolders) {
+      const csprojFiles = await findCsprojFiles(folder.uri.fsPath);
+
+      for (const csprojFile of csprojFiles) {
+        await updatePackageVersionInFile(csprojFile, packageName, targetVersion);
+      }
+    }
+
+    vscode.window.showInformationMessage(
+      `Updated ${packageName} to version ${targetVersion} in all projects`
+    );
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `Failed to update package versions: ${error}`
+    );
+  }
+}
+
+async function updatePackageVersionInFile(
+  filePath: string, 
+  packageName: string, 
+  targetVersion: string
+): Promise<void> {
+  try {
+    let content = fs.readFileSync(filePath, "utf-8");
+    
+    // Create regex to find the specific package reference
+    const packageRegex = new RegExp(
+      `(<PackageReference\\s+Include="${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*Version=")([^"]+)(")`,
+      'g'
+    );
+    
+    // Replace the version if the package is found
+    const updatedContent = content.replace(packageRegex, `$1${targetVersion}$3`);
+    
+    // Only write if content changed
+    if (updatedContent !== content) {
+      fs.writeFileSync(filePath, updatedContent, "utf-8");
+    }
+  } catch (error) {
+    console.error(`Error updating package version in ${filePath}:`, error);
+    throw error;
+  }
+}
+
 function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
   const packagesArray = Array.from(packageMap.values());
   const packagesJson = JSON.stringify(packagesArray);
@@ -252,6 +315,31 @@ function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
 		.version-conflict {
 			color: var(--vscode-errorForeground);
 			font-weight: bold;
+			cursor: pointer;
+			position: relative;
+		}
+		.version-conflict:hover {
+			background-color: var(--vscode-list-hoverBackground);
+			border-radius: 3px;
+		}
+		.tooltip {
+			position: absolute;
+			background-color: var(--vscode-editorHoverWidget-background);
+			color: var(--vscode-editorHoverWidget-foreground);
+			border: 1px solid var(--vscode-editorHoverWidget-border);
+			border-radius: 4px;
+			padding: 8px;
+			font-size: 12px;
+			white-space: nowrap;
+			z-index: 1000;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+			display: none;
+			top: 100%;
+			left: 0;
+			margin-top: 4px;
+		}
+		.version-conflict:hover .tooltip {
+			display: block;
 		}
 		.no-results {
 			color: var(--vscode-descriptionForeground);
@@ -296,16 +384,40 @@ function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
 				return \`
 					<div class="package-item">
 						<div class="package-name">\${pkg.name}</div>
-						\${pkg.consumers.map(consumer => \`
-							<div class="consumer-item \${hasVersionConflict ? 'version-conflict' : ''}">\${consumer.version} - \${consumer.projectFile}</div>
+						\${pkg.consumers.map((consumer, index) => \`
+							<div class="consumer-item \${hasVersionConflict ? 'version-conflict' : ''}" 
+							     data-package="\${pkg.name}" 
+							     data-version="\${consumer.version}" 
+							     data-project="\${consumer.projectFile}">
+								\${consumer.version} - \${consumer.projectFile}
+								\${hasVersionConflict ? '<div class="tooltip">Inconsistent versions detected, click to choose this version in all listed projects</div>' : ''}
+							</div>
 						\`).join('')}
 					</div>
 				\`;
 			}).join('');
+			
+			// Add click handlers for version conflicts
+			document.querySelectorAll('.version-conflict').forEach(element => {
+				element.addEventListener('click', handleVersionConflictClick);
+			});
 		}
 
 		// Initial render
 		renderPackages(allPackages);
+
+		function handleVersionConflictClick(event) {
+			const element = event.currentTarget;
+			const packageName = element.getAttribute('data-package');
+			const selectedVersion = element.getAttribute('data-version');
+			
+			// Send message to extension to update versions
+			vscode.postMessage({
+				command: 'updatePackageVersions',
+				packageName: packageName,
+				targetVersion: selectedVersion
+			});
+		}
 
 		// Search functionality
 		const searchInput = document.getElementById('searchInput');
@@ -339,6 +451,10 @@ function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
 			switch (message.command) {
 				case 'updateResults':
 					renderPackages(message.packages);
+					break;
+				case 'refreshPackages':
+					allPackages = message.packages;
+					renderPackages(allPackages);
 					break;
 			}
 		});
