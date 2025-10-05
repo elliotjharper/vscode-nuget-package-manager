@@ -1,21 +1,28 @@
 {
-  "name": "nuget-package-manager",
+  "name": "elltg-nuget-package-manager",
   "displayName": "nuget-package-manager",
   "description": "Manage NuGet packages in VSCode",
   "version": "0.0.1",
+  "publisher": "elltg",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elliotjharper/vscode-nuget-package-manager.git"
+  },
   "engines": {
-    "vscode": "^1.104.0"
+    "vscode": "^1.90.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "nuget-package-manager.packageUpdate",
-        "title": "NuGet: Package Update"
+        "command": "elltg-nuget-package-manager.packageUpdate",
+        "title": "NuGet Package Manager: Update Packages"
       }
     ]
   },

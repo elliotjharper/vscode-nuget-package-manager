@@ -6,7 +6,9 @@ A Visual Studio Code extension for managing NuGet packages in your .NET projects
 
 - **NuGet Package Update**: View and search through all installed NuGet packages across your workspace
   - Automatically discovers all `.csproj` files in your workspace
-  - Displays package name, version, and source project
+  - **Groups packages by name** - shows each unique package once with all its consumers
+  - Displays package name and for each consumer: version and source project
+  - Shows when the same package is used by multiple projects (potentially with different versions)
   - Real-time search filtering across package names, versions, and projects
 
 ## Usage
@@ -30,6 +32,9 @@ This extension does not currently contribute any settings.
 ### 0.0.1
 
 Initial release:
-- View all installed NuGet packages from `.csproj` files
-- Search and filter packages by name, version, or project
 
+- View all installed NuGet packages from `.csproj` files
+- **Smart package grouping**: Shows each package once with all consuming projects
+- Displays multiple consumers per package with their respective versions
+- Support for packages used across multiple projects with different versions
+- Search and filter packages by name, version, or project

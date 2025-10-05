@@ -1,143 +1,201 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
+import * as vscode from "vscode";
+
+interface PackageConsumer {
+  projectFile: string;
+  version: string;
+}
+
+interface PackageInfo {
+  name: string;
+  consumers: PackageConsumer[];
+}
 
 interface PackageReference {
-	name: string;
-	version: string;
-	projectFile: string;
+  name: string;
+  version: string;
+  projectFile: string;
 }
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  const disposable = vscode.commands.registerCommand(
+    "elltg-nuget-package-manager.packageUpdate",
+    async () => {
+      // Create and show a new webview
+      const panel = vscode.window.createWebviewPanel(
+        "nugetPackageUpdate",
+        "NuGet Package Update",
+        vscode.ViewColumn.One,
+        {
+          enableScripts: true,
+        }
+      );
 
-	console.log('NuGet Package Manager extension is now active!');
+      // Get all installed packages
+      const packageMap = await getInstalledPackages();
 
-	const disposable = vscode.commands.registerCommand('nuget-package-manager.packageUpdate', async () => {
-		const panel = vscode.window.createWebviewPanel(
-			'nugetPackageUpdate',
-			'NuGet Package Update',
-			vscode.ViewColumn.One,
-			{
-				enableScripts: true
-			}
-		);
+      // Set the webview content
+      panel.webview.html = getWebviewContent(packageMap);
 
-		// Get all installed packages
-		const packages = await getInstalledPackages();
-		
-		// Set the webview content
-		panel.webview.html = getWebviewContent(packages);
+      // Handle messages from the webview
+      panel.webview.onDidReceiveMessage(
+        (message) => {
+          switch (message.command) {
+            case "search":
+              const filtered = filterPackages(packageMap, message.text);
+              panel.webview.postMessage({
+                command: "updateResults",
+                packages: Array.from(filtered.values()),
+              });
+              break;
+          }
+        },
+        undefined,
+        context.subscriptions
+      );
+    }
+  );
 
-		// Handle messages from the webview
-		panel.webview.onDidReceiveMessage(
-			message => {
-				switch (message.command) {
-					case 'search':
-						const filtered = filterPackages(packages, message.text);
-						panel.webview.postMessage({ command: 'updateResults', packages: filtered });
-						break;
-				}
-			},
-			undefined,
-			context.subscriptions
-		);
-	});
-
-	context.subscriptions.push(disposable);
+  context.subscriptions.push(disposable);
 }
 
-async function getInstalledPackages(): Promise<PackageReference[]> {
-	const packages: PackageReference[] = [];
-	const workspaceFolders = vscode.workspace.workspaceFolders;
+async function getInstalledPackages(): Promise<Map<string, PackageInfo>> {
+  const packageMap = new Map<string, PackageInfo>();
+  const workspaceFolders = vscode.workspace.workspaceFolders;
 
-	if (!workspaceFolders) {
-		vscode.window.showWarningMessage('No workspace folder is open');
-		return packages;
-	}
+  if (!workspaceFolders) {
+    vscode.window.showWarningMessage("No workspace folder is open");
+    return packageMap;
+  }
 
-	for (const folder of workspaceFolders) {
-		const csprojFiles = await findCsprojFiles(folder.uri.fsPath);
-		
-		for (const csprojFile of csprojFiles) {
-			const projectPackages = await parseCsprojFile(csprojFile);
-			packages.push(...projectPackages);
-		}
-	}
+  for (const folder of workspaceFolders) {
+    const csprojFiles = await findCsprojFiles(folder.uri.fsPath);
 
-	return packages;
+    for (const csprojFile of csprojFiles) {
+      const projectPackages = await parseCsprojFile(csprojFile);
+
+      // Aggregate packages into the map
+      for (const pkg of projectPackages) {
+        if (packageMap.has(pkg.name)) {
+          // Add this consumer to existing package
+          const existingPackage = packageMap.get(pkg.name)!;
+          existingPackage.consumers.push({
+            projectFile: pkg.projectFile,
+            version: pkg.version,
+          });
+        } else {
+          // Create new package entry
+          packageMap.set(pkg.name, {
+            name: pkg.name,
+            consumers: [
+              {
+                projectFile: pkg.projectFile,
+                version: pkg.version,
+              },
+            ],
+          });
+        }
+      }
+    }
+  }
+
+  return packageMap;
 }
 
 async function findCsprojFiles(dir: string): Promise<string[]> {
-	const csprojFiles: string[] = [];
-	
-	try {
-		const entries = fs.readdirSync(dir, { withFileTypes: true });
-		
-		for (const entry of entries) {
-			const fullPath = path.join(dir, entry.name);
-			
-			// Skip node_modules and other common directories
-			if (entry.isDirectory() && !['node_modules', 'bin', 'obj', '.git'].includes(entry.name)) {
-				const subFiles = await findCsprojFiles(fullPath);
-				csprojFiles.push(...subFiles);
-			} else if (entry.isFile() && entry.name.endsWith('.csproj')) {
-				csprojFiles.push(fullPath);
-			}
-		}
-	} catch (error) {
-		console.error(`Error reading directory ${dir}:`, error);
-	}
-	
-	return csprojFiles;
+  const csprojFiles: string[] = [];
+
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+
+      // Skip node_modules and other common directories
+      if (
+        entry.isDirectory() &&
+        !["node_modules", "bin", "obj", ".git"].includes(entry.name)
+      ) {
+        const subFiles = await findCsprojFiles(fullPath);
+        csprojFiles.push(...subFiles);
+      } else if (entry.isFile() && entry.name.endsWith(".csproj")) {
+        csprojFiles.push(fullPath);
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading directory ${dir}:`, error);
+  }
+
+  return csprojFiles;
 }
 
 async function parseCsprojFile(filePath: string): Promise<PackageReference[]> {
-	const packages: PackageReference[] = [];
-	
-	try {
-		const content = fs.readFileSync(filePath, 'utf-8');
-		const projectName = path.basename(filePath);
-		
-		// Match PackageReference elements with Include and Version attributes
-		// Handles both <PackageReference Include="..." Version="..." /> and separate attributes
-		const packageRegex = /<PackageReference\s+Include="([^"]+)"[^>]*Version="([^"]+)"/g;
-		let match;
-		
-		while ((match = packageRegex.exec(content)) !== null) {
-			packages.push({
-				name: match[1],
-				version: match[2],
-				projectFile: projectName
-			});
-		}
-	} catch (error) {
-		console.error(`Error parsing csproj file ${filePath}:`, error);
-	}
-	
-	return packages;
+  const packages: PackageReference[] = [];
+
+  try {
+    const content = fs.readFileSync(filePath, "utf-8");
+    const projectName = path.basename(filePath);
+
+    // Match PackageReference elements with Include and Version attributes
+    // Handles both <PackageReference Include="..." Version="..." /> and separate attributes
+    const packageRegex =
+      /<PackageReference\s+Include="([^"]+)"[^>]*Version="([^"]+)"/g;
+    let match;
+
+    while ((match = packageRegex.exec(content)) !== null) {
+      packages.push({
+        name: match[1],
+        version: match[2],
+        projectFile: projectName,
+      });
+    }
+  } catch (error) {
+    console.error(`Error parsing csproj file ${filePath}:`, error);
+  }
+
+  return packages;
 }
 
-function filterPackages(packages: PackageReference[], searchText: string): PackageReference[] {
-	if (!searchText) {
-		return packages;
-	}
-	
-	const lowerSearch = searchText.toLowerCase();
-	return packages.filter(pkg => 
-		pkg.name.toLowerCase().includes(lowerSearch) ||
-		pkg.version.toLowerCase().includes(lowerSearch) ||
-		pkg.projectFile.toLowerCase().includes(lowerSearch)
-	);
+function filterPackages(
+  packageMap: Map<string, PackageInfo>,
+  searchText: string
+): Map<string, PackageInfo> {
+  if (!searchText) {
+    return packageMap;
+  }
+
+  const filtered = new Map<string, PackageInfo>();
+  const lowerSearch = searchText.toLowerCase();
+
+  for (const [packageName, packageInfo] of packageMap) {
+    // Check if package name matches
+    const nameMatches = packageName.toLowerCase().includes(lowerSearch);
+
+    // Check if any consumer's version or project file matches
+    const consumerMatches = packageInfo.consumers.some(
+      (consumer) =>
+        consumer.version.toLowerCase().includes(lowerSearch) ||
+        consumer.projectFile.toLowerCase().includes(lowerSearch)
+    );
+
+    if (nameMatches || consumerMatches) {
+      filtered.set(packageName, packageInfo);
+    }
+  }
+
+  return filtered;
 }
 
-function getWebviewContent(packages: PackageReference[]): string {
-	const packagesJson = JSON.stringify(packages);
-	
-	return `<!DOCTYPE html>
+function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
+  const packagesArray = Array.from(packageMap.values());
+  const packagesJson = JSON.stringify(packagesArray);
+
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
@@ -182,16 +240,21 @@ function getWebviewContent(packages: PackageReference[]): string {
 		.package-name {
 			font-weight: bold;
 			font-size: 16px;
-			margin-bottom: 4px;
+			margin-bottom: 8px;
 		}
-		.package-version {
+		.consumer-item {
+			margin-bottom: 6px;
+			padding-left: 12px;
+			border-left: 2px solid var(--vscode-panel-border);
+		}
+		.consumer-version {
 			color: var(--vscode-descriptionForeground);
 			font-size: 14px;
 		}
-		.package-project {
+		.consumer-project {
 			color: var(--vscode-descriptionForeground);
 			font-size: 12px;
-			margin-top: 4px;
+			margin-top: 2px;
 		}
 		.no-results {
 			color: var(--vscode-descriptionForeground);
@@ -231,8 +294,12 @@ function getWebviewContent(packages: PackageReference[]): string {
 			packageList.innerHTML = packages.map(pkg => \`
 				<div class="package-item">
 					<div class="package-name">\${pkg.name}</div>
-					<div class="package-version">Version: \${pkg.version}</div>
-					<div class="package-project">Project: \${pkg.projectFile}</div>
+					\${pkg.consumers.map(consumer => \`
+						<div class="consumer-item">
+							<div class="consumer-version">Version: \${consumer.version}</div>
+							<div class="consumer-project">Project: \${consumer.projectFile}</div>
+						</div>
+					\`).join('')}
 				</div>
 			\`).join('');
 		}
@@ -250,11 +317,18 @@ function getWebviewContent(packages: PackageReference[]): string {
 				return;
 			}
 			
-			const filtered = allPackages.filter(pkg => 
-				pkg.name.toLowerCase().includes(searchText) ||
-				pkg.version.toLowerCase().includes(searchText) ||
-				pkg.projectFile.toLowerCase().includes(searchText)
-			);
+			const filtered = allPackages.filter(pkg => {
+				// Check package name
+				const nameMatches = pkg.name.toLowerCase().includes(searchText);
+				
+				// Check consumers
+				const consumerMatches = pkg.consumers.some(consumer =>
+					consumer.version.toLowerCase().includes(searchText) ||
+					consumer.projectFile.toLowerCase().includes(searchText)
+				);
+				
+				return nameMatches || consumerMatches;
+			});
 			
 			renderPackages(filtered);
 		});
