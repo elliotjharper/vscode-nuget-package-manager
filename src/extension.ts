@@ -263,18 +263,18 @@ async function showUpdateConfirmation(
       affectedProjects
     );
 
+    let resolved = false;
+
     panel.webview.onDidReceiveMessage((message) => {
-      if (message.command === "confirm") {
-        panel.dispose();
-        resolve(true);
-      } else if (message.command === "cancel") {
-        panel.dispose();
-        resolve(false);
-      }
+      resolved = true;
+      resolve(message.command === "confirm");
+      panel.dispose();
     });
 
     panel.onDidDispose(() => {
-      resolve(false);
+      if (!resolved) {
+        resolve(false);
+      }
     });
   });
 }
