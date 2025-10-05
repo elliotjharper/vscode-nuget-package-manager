@@ -37,22 +37,24 @@ export function activate(context: vscode.ExtensionContext) {
       );
 
       // Get all installed packages
-      const packageMap = await getInstalledPackages();
+      let packageMap = await getInstalledPackages();
 
       // Set the webview content
       panel.webview.html = getWebviewContent(packageMap);
 
+      const updateWebView = panel.webview;
       // Handle messages from the webview
-      panel.webview.onDidReceiveMessage(
+      updateWebView.onDidReceiveMessage(
         async (message) => {
           switch (message.command) {
             case "search":
               const filtered = filterPackages(packageMap, message.text);
-              panel.webview.postMessage({
+              updateWebView.postMessage({
                 command: "updateResults",
                 packages: Array.from(filtered.values()),
               });
               break;
+
             case "updatePackageVersions":
               const confirmed = await showUpdateConfirmation(
                 message.packageName,
@@ -64,12 +66,28 @@ export function activate(context: vscode.ExtensionContext) {
                   message.targetVersion
                 );
                 // Refresh the package list
-                const refreshedPackages = await getInstalledPackages();
-                panel.webview.postMessage({
+                packageMap = await getInstalledPackages();
+                updateWebView.postMessage({
                   command: "refreshPackages",
-                  packages: Array.from(refreshedPackages.values()),
+                  packages: Array.from(packageMap.values()),
                 });
               }
+              break;
+
+            case "openBulkUpdate":
+              await showBulkUpdateDialog(
+                message.packages,
+                message.suggestedVersion
+              );
+              // setTimeout required to ensure that reads happen at the right time, weird behavior otherwise
+              setTimeout(async () => {
+                packageMap = await getInstalledPackages();
+
+                updateWebView.postMessage({
+                  command: "refreshPackages",
+                  packages: Array.from(packageMap.values()),
+                });
+              }, 0);
               break;
           }
         },
@@ -414,6 +432,248 @@ function getConfirmationWebviewContent(
     </html>`;
 }
 
+async function showBulkUpdateDialog(
+  packages: PackageInfo[],
+  suggestedVersion: string
+): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const panel = vscode.window.createWebviewPanel(
+      "bulkUpdate",
+      "Bulk Update Packages",
+      vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+      }
+    );
+
+    panel.webview.html = getBulkUpdateWebviewContent(
+      packages,
+      suggestedVersion
+    );
+
+    panel.webview.onDidReceiveMessage(async (message) => {
+      if (message.command === "bulkUpdate") {
+        await processBulkUpdate(packages, message.targetVersion);
+      }
+      panel.dispose();
+    });
+
+    panel.onDidDispose(() => {
+      resolve();
+    });
+  });
+}
+
+function getBulkUpdateWebviewContent(
+  packages: PackageInfo[],
+  suggestedVersion: string
+): string {
+  const packageListHtml = packages
+    .map(
+      (pkg) => `
+      <div class="package-item">
+        <span class="package-name">${pkg.name}</span>
+        <span class="consumer-count">${pkg.consumers.length} project${
+        pkg.consumers.length !== 1 ? "s" : ""
+      }</span>
+      </div>
+    `
+    )
+    .join("");
+
+  return `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Bulk Update Packages</title>
+        <style>
+            body {
+                font-family: var(--vscode-font-family);
+                font-size: var(--vscode-font-size);
+                color: var(--vscode-foreground);
+                background-color: var(--vscode-editor-background);
+                margin: 0;
+                padding: 20px;
+            }
+            .header {
+                margin-bottom: 20px;
+            }
+            .title {
+                font-size: 18px;
+                font-weight: bold;
+                margin-bottom: 10px;
+            }
+            .description {
+                margin-bottom: 20px;
+                color: var(--vscode-descriptionForeground);
+            }
+            .version-input-container {
+                margin-bottom: 20px;
+            }
+            .version-input-container label {
+                display: block;
+                margin-bottom: 5px;
+                font-weight: 500;
+            }
+            #versionInput {
+                width: 200px;
+                padding: 8px;
+                border: 1px solid var(--vscode-input-border);
+                background-color: var(--vscode-input-background);
+                color: var(--vscode-input-foreground);
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            .package-list {
+                max-height: 300px;
+                overflow-y: auto;
+                border: 1px solid var(--vscode-panel-border);
+                border-radius: 4px;
+                padding: 10px;
+                margin-bottom: 20px;
+                background-color: var(--vscode-editor-background);
+            }
+            .package-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 0;
+                border-bottom: 1px solid var(--vscode-panel-border);
+            }
+            .package-item:last-child {
+                border-bottom: none;
+            }
+            .package-name {
+                font-weight: 500;
+            }
+            .consumer-count {
+                color: var(--vscode-descriptionForeground);
+                font-size: 12px;
+            }
+            .buttons {
+                display: flex;
+                gap: 10px;
+                justify-content: flex-end;
+            }
+            .button {
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+            }
+            .button-primary {
+                background-color: var(--vscode-button-background);
+                color: var(--vscode-button-foreground);
+            }
+            .button-primary:hover {
+                background-color: var(--vscode-button-hoverBackground);
+            }
+            .button-secondary {
+                background-color: var(--vscode-button-secondaryBackground);
+                color: var(--vscode-button-secondaryForeground);
+            }
+            .button-secondary:hover {
+                background-color: var(--vscode-button-secondaryHoverBackground);
+            }
+            .package-count {
+                font-size: 14px;
+                color: var(--vscode-descriptionForeground);
+                margin-bottom: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="title">Bulk Update Packages</div>
+            <div class="description">Update all selected packages to the same version across all projects.</div>
+            <div class="package-count">${packages.length} package${
+    packages.length !== 1 ? "s" : ""
+  } selected</div>
+        </div>
+        
+        <div class="version-input-container">
+            <label for="versionInput">Target Version:</label>
+            <input type="text" id="versionInput" value="${suggestedVersion}" placeholder="e.g., 1.2.3" />
+        </div>
+        
+        <div class="package-list">
+            ${packageListHtml}
+        </div>
+        
+        <div class="buttons">
+            <button class="button button-secondary" onclick="cancel()">Cancel</button>
+            <button class="button button-primary" onclick="bulkUpdate()">Update All</button>
+        </div>
+
+        <script>
+            const vscode = acquireVsCodeApi();
+            
+            function bulkUpdate() {
+                const version = document.getElementById('versionInput').value.trim();
+                if (!version) {
+                    alert('Please enter a version number');
+                    return;
+                }
+                vscode.postMessage({ 
+                    command: 'bulkUpdate', 
+                    targetVersion: version 
+                });
+            }
+            
+            function cancel() {
+                vscode.postMessage({ command: 'cancel' });
+            }
+            
+            // Focus the version input
+            document.getElementById('versionInput').focus();
+            document.getElementById('versionInput').select();
+        </script>
+    </body>
+    </html>`;
+}
+
+async function processBulkUpdate(
+  packages: PackageInfo[],
+  targetVersion: string
+): Promise<void> {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+
+  if (!workspaceFolders) {
+    vscode.window.showErrorMessage("No workspace folder is open");
+    return;
+  }
+
+  try {
+    // Count total packages to update
+    const packageNames = packages.map((pkg) => pkg.name);
+
+    for (const folder of workspaceFolders) {
+      const csprojFiles = await findCsprojFiles(folder.uri.fsPath);
+
+      for (const csprojFile of csprojFiles) {
+        for (const packageName of packageNames) {
+          await updatePackageVersionInFile(
+            csprojFile,
+            packageName,
+            targetVersion
+          );
+        }
+      }
+    }
+
+    vscode.window.showInformationMessage(
+      `Updated ${packageNames.length} packages to version ${targetVersion} across all projects`
+    );
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `Failed to update package versions: ${error}`
+    );
+  }
+}
+
 async function updatePackageVersions(
   packageName: string,
   targetVersion: string
@@ -504,15 +764,35 @@ function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
 		}
 		.search-container {
 			margin-bottom: 20px;
+			display: flex;
+			gap: 10px;
+			align-items: center;
 		}
 		#searchInput {
-			width: 100%;
+			flex: 1;
 			padding: 8px;
 			font-size: 14px;
 			background-color: var(--vscode-input-background);
 			color: var(--vscode-input-foreground);
 			border: 1px solid var(--vscode-input-border);
 			border-radius: 2px;
+		}
+		.bulk-update-btn {
+			padding: 8px 12px;
+			background-color: var(--vscode-button-background);
+			color: var(--vscode-button-foreground);
+			border: none;
+			border-radius: 4px;
+			cursor: pointer;
+			white-space: nowrap;
+			font-size: 14px;
+		}
+		.bulk-update-btn:hover {
+			background-color: var(--vscode-button-hoverBackground);
+		}
+		.bulk-update-btn:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
 		}
 		#searchInput:focus {
 			outline: 1px solid var(--vscode-focusBorder);
@@ -580,9 +860,10 @@ function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
 	</style>
 </head>
 <body>
-	<h1>NuGet Package Update</h1>
+	<h1>NuGet Package Update<div id="myDebugElem">&nbsp;</div></h1>
 	<div class="search-container">
 		<input type="text" id="searchInput" placeholder="Search installed packages..." />
+		<button class="bulk-update-btn" id="bulkUpdateBtn" onclick="openBulkUpdateDialog()">Update All Matching</button>
 	</div>
 	<div class="package-count" id="packageCount"></div>
 	<div class="package-list" id="packageList"></div>
@@ -590,8 +871,12 @@ function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
 	<script>
 		const vscode = acquireVsCodeApi();
 		let allPackages = ${packagesJson};
+		let filteredPackages = allPackages;
 
 		function renderPackages(packages) {
+			filteredPackages = packages;
+			updateBulkUpdateButton();
+			
 			const packageList = document.getElementById('packageList');
 			const packageCount = document.getElementById('packageCount');
 			
@@ -672,15 +957,62 @@ function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
 			renderPackages(filtered);
 		});
 
+		function updateBulkUpdateButton() {
+			const bulkUpdateBtn = document.getElementById('bulkUpdateBtn');
+			bulkUpdateBtn.disabled = filteredPackages.length === 0;
+			bulkUpdateBtn.textContent = filteredPackages.length === allPackages.length 
+				? 'Update All Packages' 
+				: \`Update \${filteredPackages.length} Matching\`;
+		}
+
+		function openBulkUpdateDialog() {
+			if (filteredPackages.length === 0) return;
+			
+			// Find the highest version among all filtered packages
+			const allVersions = [];
+			filteredPackages.forEach(pkg => {
+				pkg.consumers.forEach(consumer => {
+					allVersions.push(consumer.version);
+				});
+			});
+			
+			const highestVersion = findHighestVersion(allVersions);
+			
+			// Send message to open bulk update dialog
+			vscode.postMessage({
+				command: 'openBulkUpdate',
+				packages: filteredPackages,
+				suggestedVersion: highestVersion
+			});
+		}
+
+		function findHighestVersion(versions) {
+			// Simple version comparison - assumes semantic versioning
+			return versions.sort((a, b) => {
+				const aParts = a.split('.').map(n => parseInt(n) || 0);
+				const bParts = b.split('.').map(n => parseInt(n) || 0);
+				
+				for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+					const aPart = aParts[i] || 0;
+					const bPart = bParts[i] || 0;
+					if (aPart !== bPart) {
+						return bPart - aPart; // Descending order
+					}
+				}
+				return 0;
+			})[0];
+		}
+
 		// Listen for messages from extension
 		window.addEventListener('message', event => {
 			const message = event.data;
 			switch (message.command) {
 				case 'updateResults':
-					renderPackages(message.packages);
+          allPackages = message.packages;
+					renderPackages(allPackages);
 					break;
 				case 'refreshPackages':
-					allPackages = message.packages;
+          allPackages = message.packages;
 					renderPackages(allPackages);
 					break;
 			}
