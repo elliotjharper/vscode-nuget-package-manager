@@ -54,13 +54,22 @@ export function activate(context: vscode.ExtensionContext) {
               });
               break;
             case "updatePackageVersions":
-              await updatePackageVersions(message.packageName, message.targetVersion);
-              // Refresh the package list
-              const refreshedPackages = await getInstalledPackages();
-              panel.webview.postMessage({
-                command: "refreshPackages",
-                packages: Array.from(refreshedPackages.values()),
-              });
+              const confirmed = await showUpdateConfirmation(
+                message.packageName,
+                message.targetVersion
+              );
+              if (confirmed) {
+                await updatePackageVersions(
+                  message.packageName,
+                  message.targetVersion
+                );
+                // Refresh the package list
+                const refreshedPackages = await getInstalledPackages();
+                panel.webview.postMessage({
+                  command: "refreshPackages",
+                  packages: Array.from(refreshedPackages.values()),
+                });
+              }
               break;
           }
         },
@@ -200,7 +209,62 @@ function filterPackages(
   return filtered;
 }
 
-async function updatePackageVersions(packageName: string, targetVersion: string): Promise<void> {
+async function showUpdateConfirmation(
+  packageName: string,
+  targetVersion: string
+): Promise<boolean> {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+
+  if (!workspaceFolders) {
+    return false;
+  }
+
+  // Find all projects that currently use this package
+  const affectedProjects: { project: string; currentVersion: string }[] = [];
+
+  for (const folder of workspaceFolders) {
+    const csprojFiles = await findCsprojFiles(folder.uri.fsPath);
+
+    for (const csprojFile of csprojFiles) {
+      const packages = await parseCsprojFile(csprojFile);
+      const packageInfo = packages.find((pkg) => pkg.name === packageName);
+
+      if (packageInfo && packageInfo.version !== targetVersion) {
+        affectedProjects.push({
+          project: path.basename(packageInfo.projectFile),
+          currentVersion: packageInfo.version,
+        });
+      }
+    }
+  }
+
+  if (affectedProjects.length === 0) {
+    vscode.window.showInformationMessage(
+      "All projects are already using the selected version."
+    );
+    return false;
+  }
+
+  // Create confirmation message
+  const projectDetails = affectedProjects
+    .map((p) => `  • ${p.project}: ${p.currentVersion} → ${targetVersion}`)
+    .join("\n\n");
+
+  const message = `Update ${packageName} to version ${targetVersion}?\n\nThe following projects will be updated:\n\n${projectDetails}`;
+
+  const result = await vscode.window.showWarningMessage(
+    message,
+    { modal: true },
+    "Update All"
+  );
+
+  return result === "Update All";
+}
+
+async function updatePackageVersions(
+  packageName: string,
+  targetVersion: string
+): Promise<void> {
   const workspaceFolders = vscode.workspace.workspaceFolders;
 
   if (!workspaceFolders) {
@@ -213,7 +277,11 @@ async function updatePackageVersions(packageName: string, targetVersion: string)
       const csprojFiles = await findCsprojFiles(folder.uri.fsPath);
 
       for (const csprojFile of csprojFiles) {
-        await updatePackageVersionInFile(csprojFile, packageName, targetVersion);
+        await updatePackageVersionInFile(
+          csprojFile,
+          packageName,
+          targetVersion
+        );
       }
     }
 
@@ -228,22 +296,28 @@ async function updatePackageVersions(packageName: string, targetVersion: string)
 }
 
 async function updatePackageVersionInFile(
-  filePath: string, 
-  packageName: string, 
+  filePath: string,
+  packageName: string,
   targetVersion: string
 ): Promise<void> {
   try {
     let content = fs.readFileSync(filePath, "utf-8");
-    
+
     // Create regex to find the specific package reference
     const packageRegex = new RegExp(
-      `(<PackageReference\\s+Include="${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*Version=")([^"]+)(")`,
-      'g'
+      `(<PackageReference\\s+Include="${packageName.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&"
+      )}"[^>]*Version=")([^"]+)(")`,
+      "g"
     );
-    
+
     // Replace the version if the package is found
-    const updatedContent = content.replace(packageRegex, `$1${targetVersion}$3`);
-    
+    const updatedContent = content.replace(
+      packageRegex,
+      `$1${targetVersion}$3`
+    );
+
     // Only write if content changed
     if (updatedContent !== content) {
       fs.writeFileSync(filePath, updatedContent, "utf-8");

@@ -43,12 +43,19 @@
   1. Hover over a red-highlighted version entry
   2. Observe the tooltip that appears
   3. Click on the version entry
-  4. Observe the confirmation message
+  4. Read the confirmation dialog that appears
+  5. Click "Update All" to confirm or "Cancel" to abort
+  6. If confirmed, observe the success message
 - **Expected**:
   - Tooltip appears on hover with instructions
-  - Clicking updates all .csproj files to use the selected version
+  - Confirmation dialog shows:
+    - Package name and target version
+    - List of affected projects with current version → target version
+    - "Update All" and "Cancel" buttons
+  - Clicking "Update All" updates all .csproj files to use the selected version
   - Success message shows "Updated [PackageName] to version [Version] in all projects"
   - Package list refreshes to show no more conflicts for that package
+  - Clicking "Cancel" aborts the operation with no changes
 
 #### Scenario 5: Search functionality
 

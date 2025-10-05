@@ -74,8 +74,9 @@ Interactive feature allowing users to resolve version conflicts:
 - Detects packages with multiple versions across projects
 - Provides visual feedback with red highlighting
 - Shows tooltips on hover with instructions
-- Handles click events to update all .csproj files
-- Uses regex-based file content replacement
+- Handles click events to initiate version standardization
+- **Shows confirmation dialog** with detailed information about affected projects
+- Uses regex-based file content replacement after user confirmation
 - Provides user feedback via VS Code notifications
 
 ## File Structure
@@ -115,6 +116,15 @@ Extracts PackageReference elements from csproj XML.
 ### `getWebviewContent(packages)`
 
 Generates HTML for the webview with embedded package data.
+
+### `showUpdateConfirmation(packageName, targetVersion)`
+
+Shows a confirmation dialog before updating package versions:
+
+1. Scans all projects to find affected files
+2. Builds list of version changes (from → to)
+3. Displays modal dialog with change summary
+4. Returns user's choice (Update All or Cancel)
 
 ### `updatePackageVersions(packageName, targetVersion)`
 

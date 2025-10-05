@@ -119,6 +119,7 @@ When no packages are found:
 - Smooth, instant updates (no loading states needed)
 - **Version conflict highlighting**: When a package has different versions across projects, all consumer entries for that package are highlighted in red
 - **Interactive version resolution**: Hover over conflicted versions to see tooltip, click to standardize that version across all projects
+- **Confirmation dialogs**: Modal dialogs for confirming version updates with detailed change lists
 
 ## Accessibility
 
