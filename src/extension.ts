@@ -89,6 +89,14 @@ export function activate(context: vscode.ExtensionContext) {
                 });
               }, 0);
               break;
+
+            case "refreshPackageList":
+              packageMap = await getInstalledPackages();
+              updateWebView.postMessage({
+                command: "refreshPackages",
+                packages: Array.from(packageMap.values()),
+              });
+              break;
           }
         },
         undefined,
@@ -630,6 +638,19 @@ function getBulkUpdateWebviewContent(
             // Focus the version input
             document.getElementById('versionInput').focus();
             document.getElementById('versionInput').select();
+            
+            // Add Enter key listener to version input
+            document.getElementById('versionInput').addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    bulkUpdate();
+                }
+
+                if (event.key === 'Escape' || event.key === 'Esc') {
+                    event.preventDefault();
+                    cancel();
+                }
+            });
         </script>
     </body>
     </html>`;
@@ -794,6 +815,19 @@ function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
 			opacity: 0.5;
 			cursor: not-allowed;
 		}
+		.refresh-btn {
+			padding: 8px 12px;
+			background-color: var(--vscode-button-secondaryBackground);
+			color: var(--vscode-button-secondaryForeground);
+			border: none;
+			border-radius: 4px;
+			cursor: pointer;
+			white-space: nowrap;
+			font-size: 14px;
+		}
+		.refresh-btn:hover {
+			background-color: var(--vscode-button-secondaryHoverBackground);
+		}
 		#searchInput:focus {
 			outline: 1px solid var(--vscode-focusBorder);
 		}
@@ -860,9 +894,10 @@ function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
 	</style>
 </head>
 <body>
-	<h1>NuGet Package Update<div id="myDebugElem">&nbsp;</div></h1>
+	<h1>NuGet Package Update</h1>
 	<div class="search-container">
 		<input type="text" id="searchInput" placeholder="Search installed packages..." />
+		<button class="refresh-btn" onclick="refreshPackages()">Refresh</button>
 		<button class="bulk-update-btn" id="bulkUpdateBtn" onclick="openBulkUpdateDialog()">Update All Matching</button>
 	</div>
 	<div class="package-count" id="packageCount"></div>
@@ -963,6 +998,13 @@ function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
 			bulkUpdateBtn.textContent = filteredPackages.length === allPackages.length 
 				? 'Update All Packages' 
 				: \`Update \${filteredPackages.length} Matching\`;
+		}
+
+		function refreshPackages() {
+			// Send message to extension to refresh package list
+			vscode.postMessage({
+				command: 'refreshPackageList'
+			});
 		}
 
 		function openBulkUpdateDialog() {

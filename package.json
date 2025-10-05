@@ -2,7 +2,7 @@
   "name": "elltg-nuget-package-manager",
   "displayName": "Update and Unify NuGet Packages",
   "description": "Manage NuGet packages in VSCode",
-  "version": "0.0.3",
+  "version": "1.0.0",
   "publisher": "elltg",
   "repository": {
     "type": "git",
