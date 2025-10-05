@@ -31,8 +31,9 @@
 - **Expected**:
   - Webview panel titled "NuGet Package Update" opens
   - All packages from all .csproj files are displayed (deduplicated by package name)
-  - Each package shows: name, and for each consumer: version and source project file
+  - Each package shows: name, and for each consumer: version and project on one line (format: "version - project")
   - Packages that are used by multiple projects show multiple consumer entries
+  - **Version conflicts are highlighted in red** when the same package has different versions across projects
 
 #### Scenario 4: Search functionality
 
@@ -82,6 +83,7 @@ Create test .csproj files with the following content:
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageReference Include="AutoMapper" Version="12.0.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Serilog" Version="3.2.0" />
   </ItemGroup>
 </Project>
 ```
@@ -91,15 +93,18 @@ Create test .csproj files with the following content:
 When opening the test workspace above, you should see 5 unique packages:
 
 1. **Newtonsoft.Json**
-   - Version: 13.0.3 (TestProject1.csproj)
-   - Version: 13.0.3 (TestProject2.csproj)
+   - 13.0.3 - TestProject1.csproj
+   - 13.0.3 - TestProject2.csproj
 2. **Microsoft.Extensions.Logging**
-   - Version: 8.0.0 (TestProject1.csproj)
-3. **Serilog**
-   - Version: 3.1.1 (TestProject1.csproj)
+   - 8.0.0 - TestProject1.csproj
+3. **Serilog** (version conflict - highlighted in red)
+   - 3.1.1 - TestProject1.csproj
+   - 3.2.0 - TestProject2.csproj
 4. **Swashbuckle.AspNetCore**
-   - Version: 6.5.0 (TestProject2.csproj)
+   - 6.5.0 - TestProject2.csproj
 5. **AutoMapper**
-   - Version: 12.0.1 (TestProject2.csproj)
+   - 12.0.1 - TestProject2.csproj
 
-Note: Newtonsoft.Json appears as one package with two consumers (both projects).
+Note: 
+- Newtonsoft.Json appears as one package with two consumers (both projects using same version).
+- Serilog appears with version conflict highlighting because different versions are used across projects.

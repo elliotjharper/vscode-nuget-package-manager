@@ -17,34 +17,29 @@
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ Newtonsoft.Json                                       │  │
-│  │   │ Version: 13.0.3                                   │  │
-│  │   │ Project: TestProject1.csproj                      │  │
-│  │   │ Version: 13.0.3                                   │  │
-│  │   │ Project: TestProject2.csproj                      │  │
+│  │   │ 13.0.3 - TestProject1.csproj                      │  │
+│  │   │ 13.0.3 - TestProject2.csproj                      │  │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ Microsoft.Extensions.Logging                          │  │
-│  │   │ Version: 8.0.0                                    │  │
-│  │   │ Project: TestProject1.csproj                      │  │
+│  │   │ 8.0.0 - TestProject1.csproj                       │  │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ Serilog                                               │  │
-│  │   │ Version: 3.1.1                                    │  │
-│  │   │ Project: TestProject1.csproj                      │  │
+│  │   │ 3.1.1 - TestProject1.csproj                       │  │
+│  │   │ 3.2.0 - TestProject2.csproj                       │  │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ Swashbuckle.AspNetCore                                │  │
-│  │   │ Version: 6.5.0                                    │  │
-│  │   │ Project: TestProject2.csproj                      │  │
+│  │   │ 6.5.0 - TestProject2.csproj                       │  │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ AutoMapper                                            │  │
-│  │   │ Version: 12.0.1                                   │  │
-│  │   │ Project: TestProject2.csproj                      │  │
+│  │   │ 12.0.1 - TestProject2.csproj                      │  │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
@@ -106,9 +101,9 @@ When no packages are found:
 
 - Title (h1): 24px, bold
 - Package name: 16px, bold
-- Version: 14px, regular
-- Project: 12px, regular
+- Consumer entries: 14px, regular
 - Search placeholder: 14px, italic
+- Version conflicts: Bold text with error color (red in light theme, red-ish in dark theme)
 
 ### Spacing
 
@@ -122,6 +117,7 @@ When no packages are found:
 - Search box: Full-width input with focus outline
 - Real-time filtering as user types
 - Smooth, instant updates (no loading states needed)
+- **Version conflict highlighting**: When a package has different versions across projects, all consumer entries for that package are highlighted in red
 
 ## Accessibility
 

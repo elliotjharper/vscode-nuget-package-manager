@@ -243,18 +243,15 @@ function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
 			margin-bottom: 8px;
 		}
 		.consumer-item {
-			margin-bottom: 6px;
+			margin-bottom: 4px;
 			padding-left: 12px;
 			border-left: 2px solid var(--vscode-panel-border);
-		}
-		.consumer-version {
 			color: var(--vscode-descriptionForeground);
 			font-size: 14px;
 		}
-		.consumer-project {
-			color: var(--vscode-descriptionForeground);
-			font-size: 12px;
-			margin-top: 2px;
+		.version-conflict {
+			color: var(--vscode-errorForeground);
+			font-weight: bold;
 		}
 		.no-results {
 			color: var(--vscode-descriptionForeground);
@@ -291,17 +288,20 @@ function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
 
 			packageCount.textContent = \`Showing \${packages.length} package\${packages.length !== 1 ? 's' : ''}\`;
 			
-			packageList.innerHTML = packages.map(pkg => \`
-				<div class="package-item">
-					<div class="package-name">\${pkg.name}</div>
-					\${pkg.consumers.map(consumer => \`
-						<div class="consumer-item">
-							<div class="consumer-version">Version: \${consumer.version}</div>
-							<div class="consumer-project">Project: \${consumer.projectFile}</div>
-						</div>
-					\`).join('')}
-				</div>
-			\`).join('');
+			packageList.innerHTML = packages.map(pkg => {
+				// Check if package has version conflicts
+				const versions = pkg.consumers.map(c => c.version);
+				const hasVersionConflict = new Set(versions).size > 1;
+				
+				return \`
+					<div class="package-item">
+						<div class="package-name">\${pkg.name}</div>
+						\${pkg.consumers.map(consumer => \`
+							<div class="consumer-item \${hasVersionConflict ? 'version-conflict' : ''}">\${consumer.version} - \${consumer.projectFile}</div>
+						\`).join('')}
+					</div>
+				\`;
+			}).join('');
 		}
 
 		// Initial render

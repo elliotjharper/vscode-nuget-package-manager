@@ -9,6 +9,7 @@ A Visual Studio Code extension for managing NuGet packages in your .NET projects
   - **Groups packages by name** - shows each unique package once with all its consumers
   - Displays package name and for each consumer: version and source project
   - Shows when the same package is used by multiple projects (potentially with different versions)
+  - **Highlights version conflicts in red** when the same package has different versions across projects
   - Real-time search filtering across package names, versions, and projects
 
 ## Usage
@@ -37,4 +38,5 @@ Initial release:
 - **Smart package grouping**: Shows each package once with all consuming projects
 - Displays multiple consumers per package with their respective versions
 - Support for packages used across multiple projects with different versions
+- **Version conflict highlighting**: Highlights packages in red when different versions are used across projects
 - Search and filter packages by name, version, or project

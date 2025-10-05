@@ -63,6 +63,7 @@ The webview uses VSCode theme variables for consistent styling:
 - Professional card-based layout with consumer sub-items
 - Responsive design
 - Clear visual hierarchy showing package → consumers relationship
+- **Version conflict highlighting**: Uses `var(--vscode-errorForeground)` to highlight packages with version conflicts
 
 ## File Structure
 
