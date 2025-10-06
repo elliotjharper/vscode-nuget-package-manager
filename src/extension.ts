@@ -220,11 +220,10 @@ function filterPackages(
     // Check if package name matches
     const nameMatches = packageName.toLowerCase().includes(lowerSearch);
 
-    // Check if any consumer's version or project file matches
+    // Check if any consumer's version matches
     const consumerMatches = packageInfo.consumers.some(
       (consumer) =>
-        consumer.version.toLowerCase().includes(lowerSearch) ||
-        consumer.projectFile.toLowerCase().includes(lowerSearch)
+        consumer.version.toLowerCase().includes(lowerSearch)
     );
 
     if (nameMatches || consumerMatches) {
@@ -982,8 +981,7 @@ function getWebviewContent(packageMap: Map<string, PackageInfo>): string {
 				
 				// Check consumers
 				const consumerMatches = pkg.consumers.some(consumer =>
-					consumer.version.toLowerCase().includes(searchText) ||
-					consumer.projectFile.toLowerCase().includes(searchText)
+					consumer.version.toLowerCase().includes(searchText)
 				);
 				
 				return nameMatches || consumerMatches;

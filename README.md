@@ -13,7 +13,7 @@ A Visual Studio Code extension for managing NuGet packages in your .NET projects
   - **Interactive version resolution**: Click on any conflicted version to standardize that version across all projects
   - **Bulk package updates**: Update all matching packages (from search filter) to a chosen version across all projects
   - **Consistent confirmation dialogs**: Custom webview dialogs with scrollable project lists for all confirmations
-  - Real-time search filtering across package names, versions, and projects
+  - Real-time search filtering across package names and versions
 
 ## Usage
 
@@ -66,4 +66,4 @@ Initial release:
 - Support for packages used across multiple projects with different versions
 - **Version conflict highlighting**: Highlights packages in red when different versions are used across projects
 - **Interactive version resolution**: Click on any version to update all projects to use that version
-- Search and filter packages by name, version, or project
+- Search and filter packages by name or version
