@@ -1,5 +1,3 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import { showBulkUpdateDialog } from "./dialogs/show-bulk-update-dialog";
 import { showUpdateConfirmation } from "./dialogs/show-update-confirmation";

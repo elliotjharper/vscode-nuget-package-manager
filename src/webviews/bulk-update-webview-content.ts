@@ -2,7 +2,8 @@ import { PackageInfo } from "../types";
 
 export function bulkUpdateWebviewContent(
   packages: PackageInfo[],
-  suggestedVersion: string
+  suggestedVersion: string,
+  availableVersions: string[] = []
 ): string {
   const packageListHtml = packages
     .map(
@@ -52,8 +53,23 @@ export function bulkUpdateWebviewContent(
                 margin-bottom: 5px;
                 font-weight: 500;
             }
+            .version-input-group {
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
             #versionInput {
-                width: 200px;
+                min-width: 200px;
+                padding: 8px;
+                border: 1px solid var(--vscode-input-border);
+                background-color: var(--vscode-input-background);
+                color: var(--vscode-input-foreground);
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            #versionSelect {
+                min-width: 150px;
                 padding: 8px;
                 border: 1px solid var(--vscode-input-border);
                 background-color: var(--vscode-input-background);
@@ -131,7 +147,13 @@ export function bulkUpdateWebviewContent(
         
         <div class="version-input-container">
             <label for="versionInput">Target Version:</label>
-            <input type="text" id="versionInput" value="${suggestedVersion}" placeholder="e.g., 1.2.3" />
+            <div class="version-input-group">
+                <input type="text" id="versionInput" value="${suggestedVersion}" placeholder="e.g., 1.2.3" />
+                <select id="versionSelect" style="margin-left: 10px; padding: 8px; border: 1px solid var(--vscode-input-border); background-color: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 4px;">
+                    <option value="">Select version...</option>
+                </select>
+                <button id="refreshVersions" class="button button-secondary" style="margin-left: 10px; padding: 8px 12px; font-size: 12px;">Refresh</button>
+            </div>
         </div>
         
         <div class="package-list">
@@ -162,6 +184,43 @@ export function bulkUpdateWebviewContent(
                 vscode.postMessage({ command: 'cancel' });
             }
             
+            function refreshVersions() {
+                vscode.postMessage({ command: 'refreshVersions' });
+            }
+            
+            function populateVersions(versions) {
+                const select = document.getElementById('versionSelect');
+                select.innerHTML = '<option value="">Select version...</option>';
+                
+                versions.forEach(version => {
+                    const option = document.createElement('option');
+                    option.value = version;
+                    option.textContent = version;
+                    select.appendChild(option);
+                });
+            }
+            
+            // Handle version selection from dropdown
+            document.getElementById('versionSelect').addEventListener('change', function(event) {
+                const selectedVersion = event.target.value;
+                if (selectedVersion) {
+                    document.getElementById('versionInput').value = selectedVersion;
+                }
+            });
+            
+            // Handle refresh button
+            document.getElementById('refreshVersions').addEventListener('click', refreshVersions);
+            
+            // Listen for messages from extension
+            window.addEventListener('message', event => {
+                const message = event.data;
+                switch (message.command) {
+                    case 'updateVersions':
+                        populateVersions(message.versions);
+                        break;
+                }
+            });
+            
             // Focus the version input
             document.getElementById('versionInput').focus();
             document.getElementById('versionInput').select();
@@ -178,6 +237,9 @@ export function bulkUpdateWebviewContent(
                     cancel();
                 }
             });
+            
+            // Initialize with available versions
+            populateVersions(${JSON.stringify(availableVersions)});
         </script>
     </body>
     </html>`;
