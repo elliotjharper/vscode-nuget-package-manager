@@ -1,15 +1,15 @@
 export interface PackageConsumer {
-  projectFile: string;
-  version: string;
+    projectFile: string;
+    version: string;
 }
 
 export interface PackageInfo {
-  name: string;
-  consumers: PackageConsumer[];
+    name: string;
+    consumers: PackageConsumer[];
 }
 
 export interface PackageReference {
-  name: string;
-  version: string;
-  projectFile: string;
+    name: string;
+    version: string;
+    projectFile: string;
 }

@@ -1,20 +1,20 @@
 export function confirmationWebviewContent(
-  packageName: string,
-  targetVersion: string,
-  affectedProjects: { project: string; currentVersion: string }[]
+    packageName: string,
+    targetVersion: string,
+    affectedProjects: { project: string; currentVersion: string }[]
 ): string {
-  const projectListHtml = affectedProjects
-    .map(
-      (p) => `
+    const projectListHtml = affectedProjects
+        .map(
+            (p) => `
       <div class="project-item">
         <span class="project-name">${p.project}</span>
         <span class="version-change">${p.currentVersion} → ${targetVersion}</span>
       </div>
     `
-    )
-    .join("");
+        )
+        .join("");
 
-  return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -105,14 +105,14 @@ export function confirmationWebviewContent(
             <div class="package-info">Update ${packageName} to version ${targetVersion}</div>
             <div class="description">The following projects will be updated:</div>
             <div class="project-count">${affectedProjects.length} project${
-    affectedProjects.length !== 1 ? "s" : ""
-  } affected</div>
+        affectedProjects.length !== 1 ? "s" : ""
+    } affected</div>
         </div>
-        
+
         <div class="project-list">
             ${projectListHtml}
         </div>
-        
+
         <div class="buttons">
             <button class="button button-secondary" onclick="cancel()">Cancel</button>
             <button class="button button-primary" onclick="confirm()">Update All</button>
@@ -120,11 +120,11 @@ export function confirmationWebviewContent(
 
         <script>
             const vscode = acquireVsCodeApi();
-            
+
             function confirm() {
                 vscode.postMessage({ command: 'confirm' });
             }
-            
+
             function cancel() {
                 vscode.postMessage({ command: 'cancel' });
             }

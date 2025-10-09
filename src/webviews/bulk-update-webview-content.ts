@@ -1,24 +1,24 @@
 import { PackageInfo } from "../types";
 
 export function bulkUpdateWebviewContent(
-  packages: PackageInfo[],
-  suggestedVersion: string,
-  availableVersions: string[] = []
+    packages: PackageInfo[],
+    suggestedVersion: string,
+    availableVersions: string[] = []
 ): string {
-  const packageListHtml = packages
-    .map(
-      (pkg) => `
+    const packageListHtml = packages
+        .map(
+            (pkg) => `
       <div class="package-item">
         <span class="package-name">${pkg.name}</span>
         <span class="consumer-count">${pkg.consumers.length} project${
-        pkg.consumers.length !== 1 ? "s" : ""
-      }</span>
+                pkg.consumers.length !== 1 ? "s" : ""
+            }</span>
       </div>
     `
-    )
-    .join("");
+        )
+        .join("");
 
-  return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -141,10 +141,10 @@ export function bulkUpdateWebviewContent(
             <div class="title">Bulk Update Packages</div>
             <div class="description">Update all selected packages to the same version across all projects.</div>
             <div class="package-count">${packages.length} package${
-    packages.length !== 1 ? "s" : ""
-  } selected</div>
+        packages.length !== 1 ? "s" : ""
+    } selected</div>
         </div>
-        
+
         <div class="version-input-container">
             <label for="versionInput">Target Version:</label>
             <div class="version-input-group">
@@ -155,11 +155,11 @@ export function bulkUpdateWebviewContent(
                 <button id="refreshVersions" class="button button-secondary" style="margin-left: 10px; padding: 8px 12px; font-size: 12px;">Refresh</button>
             </div>
         </div>
-        
+
         <div class="package-list">
             ${packageListHtml}
         </div>
-        
+
         <div class="buttons">
             <button class="button button-secondary" onclick="cancel()">Cancel</button>
             <button class="button button-primary" onclick="bulkUpdate()">Update All</button>
@@ -167,31 +167,31 @@ export function bulkUpdateWebviewContent(
 
         <script>
             const vscode = acquireVsCodeApi();
-            
+
             function bulkUpdate() {
                 const version = document.getElementById('versionInput').value.trim();
                 if (!version) {
                     alert('Please enter a version number');
                     return;
                 }
-                vscode.postMessage({ 
-                    command: 'bulkUpdate', 
-                    targetVersion: version 
+                vscode.postMessage({
+                    command: 'bulkUpdate',
+                    targetVersion: version
                 });
             }
-            
+
             function cancel() {
                 vscode.postMessage({ command: 'cancel' });
             }
-            
+
             function refreshVersions() {
                 vscode.postMessage({ command: 'refreshVersions' });
             }
-            
+
             function populateVersions(versions) {
                 const select = document.getElementById('versionSelect');
                 select.innerHTML = '<option value="">Select version...</option>';
-                
+
                 versions.forEach(version => {
                     const option = document.createElement('option');
                     option.value = version;
@@ -199,7 +199,7 @@ export function bulkUpdateWebviewContent(
                     select.appendChild(option);
                 });
             }
-            
+
             // Handle version selection from dropdown
             document.getElementById('versionSelect').addEventListener('change', function(event) {
                 const selectedVersion = event.target.value;
@@ -207,10 +207,10 @@ export function bulkUpdateWebviewContent(
                     document.getElementById('versionInput').value = selectedVersion;
                 }
             });
-            
+
             // Handle refresh button
             document.getElementById('refreshVersions').addEventListener('click', refreshVersions);
-            
+
             // Listen for messages from extension
             window.addEventListener('message', event => {
                 const message = event.data;
@@ -220,11 +220,11 @@ export function bulkUpdateWebviewContent(
                         break;
                 }
             });
-            
+
             // Focus the version input
             document.getElementById('versionInput').focus();
             document.getElementById('versionInput').select();
-            
+
             // Add Enter key listener to version input
             document.getElementById('versionInput').addEventListener('keydown', function(event) {
                 if (event.key === 'Enter') {
@@ -237,7 +237,7 @@ export function bulkUpdateWebviewContent(
                     cancel();
                 }
             });
-            
+
             // Initialize with available versions
             populateVersions(${JSON.stringify(availableVersions)});
         </script>
