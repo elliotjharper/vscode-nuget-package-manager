@@ -77,6 +77,26 @@ export function bulkUpdateWebviewContent(
                 border-radius: 4px;
                 font-size: 14px;
             }
+            #versionSelect:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+            .loading-spinner {
+                display: inline-block;
+                animation: spin 1s linear infinite;
+                margin-right: 8px;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            .loading-indicator {
+                display: flex;
+                align-items: center;
+                color: var(--vscode-descriptionForeground);
+                font-size: 12px;
+                margin-left: 10px;
+            }
             .package-list {
                 max-height: 300px;
                 overflow-y: auto;
@@ -149,9 +169,13 @@ export function bulkUpdateWebviewContent(
             <label for="versionInput">Target Version:</label>
             <div class="version-input-group">
                 <input type="text" id="versionInput" value="${suggestedVersion}" placeholder="e.g., 1.2.3" />
-                <select id="versionSelect" style="margin-left: 10px; padding: 8px; border: 1px solid var(--vscode-input-border); background-color: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 4px;">
+                <select id="versionSelect" style="margin-left: 10px; padding: 8px; border: 1px solid var(--vscode-input-border); background-color: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 4px;" ${availableVersions.length === 0 ? 'disabled' : ''}>
                     <option value="">Select version...</option>
                 </select>
+                <div id="loadingIndicator" class="loading-indicator" style="display: ${availableVersions.length === 0 ? 'flex' : 'none'};">
+                    <span class="loading-spinner">⟳</span>
+                    <span>Loading versions...</span>
+                </div>
                 <button id="refreshVersions" class="button button-secondary" style="margin-left: 10px; padding: 8px 12px; font-size: 12px;">Refresh</button>
             </div>
         </div>
@@ -190,14 +214,25 @@ export function bulkUpdateWebviewContent(
 
             function populateVersions(versions) {
                 const select = document.getElementById('versionSelect');
+                const loadingIndicator = document.getElementById('loadingIndicator');
+                
                 select.innerHTML = '<option value="">Select version...</option>';
 
-                versions.forEach(version => {
-                    const option = document.createElement('option');
-                    option.value = version;
-                    option.textContent = version;
-                    select.appendChild(option);
-                });
+                if (versions.length > 0) {
+                    versions.forEach(version => {
+                        const option = document.createElement('option');
+                        option.value = version;
+                        option.textContent = version;
+                        select.appendChild(option);
+                    });
+                    // Hide loading indicator and enable select
+                    loadingIndicator.style.display = 'none';
+                    select.disabled = false;
+                } else {
+                    // Show loading indicator and disable select
+                    loadingIndicator.style.display = 'flex';
+                    select.disabled = true;
+                }
             }
 
             // Handle version selection from dropdown
