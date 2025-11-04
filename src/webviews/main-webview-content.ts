@@ -85,6 +85,15 @@ export function mainWebviewContent(
 			font-weight: bold;
 			font-size: 16px;
 			margin-bottom: 8px;
+			cursor: pointer;
+			display: inline-block;
+			padding: 4px 8px;
+			border-radius: 4px;
+			transition: background-color 0.2s;
+		}
+		.package-name:hover {
+			background-color: var(--vscode-list-hoverBackground);
+			text-decoration: underline;
 		}
 		.consumer-item {
 			margin-bottom: 4px;
@@ -172,7 +181,11 @@ export function mainWebviewContent(
 				
 				return \`
 					<div class="package-item">
-						<div class="package-name">\${pkg.name}</div>
+						<div class="package-name" 
+						     data-package="\${pkg.name}" 
+						     title="Click to select a new version of this package to install in all projects that currently have it installed.">
+							\${pkg.name}
+						</div>
 						\${pkg.consumers.map((consumer, index) => \`
 							<div class="consumer-item \${hasVersionConflict ? 'version-conflict' : ''}" 
 							     data-package="\${pkg.name}" 
@@ -186,6 +199,11 @@ export function mainWebviewContent(
 				\`;
 			}).join('');
 			
+			// Add click handlers for package names
+			document.querySelectorAll('.package-name').forEach(element => {
+				element.addEventListener('click', handlePackageNameClick);
+			});
+			
 			// Add click handlers for version conflicts
 			document.querySelectorAll('.version-conflict').forEach(element => {
 				element.addEventListener('click', handleVersionConflictClick);
@@ -194,6 +212,26 @@ export function mainWebviewContent(
 
 		// Initial render
 		renderPackages(allPackages);
+
+		function handlePackageNameClick(event) {
+			const element = event.currentTarget;
+			const packageName = element.getAttribute('data-package');
+			
+			// Find the package in the current list
+			const pkg = allPackages.find(p => p.name === packageName);
+			if (!pkg) return;
+			
+			// Get all versions for this package
+			const allVersions = pkg.consumers.map(c => c.version);
+			const highestVersion = findHighestVersion(allVersions);
+			
+			// Send message to open bulk update dialog with just this package
+			vscode.postMessage({
+				command: 'openBulkUpdate',
+				packages: [pkg],
+				suggestedVersion: highestVersion
+			});
+		}
 
 		function handleVersionConflictClick(event) {
 			const element = event.currentTarget;
