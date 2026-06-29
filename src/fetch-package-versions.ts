@@ -11,6 +11,20 @@ interface PackageVersion {
     listed?: boolean;
 }
 
+interface JsonPackageSearchResult {
+    id: string;
+    version: string;
+}
+
+interface JsonPackageSearchSource {
+    sourceName: string;
+    packages: JsonPackageSearchResult[];
+}
+
+interface JsonPackageSearchResponse {
+    searchResult: JsonPackageSearchSource[];
+}
+
 /**
  * Finds the nuget.config file by searching up the directory tree from workspace folders
  */
@@ -44,7 +58,7 @@ export async function findNuGetConfigPath(): Promise<string | null> {
  * Fetches available versions for a package using NuGet CLI
  */
 export async function fetchPackageVersions(
-    packageName: string
+    packageName: string,
 ): Promise<PackageVersion[]> {
     try {
         const nugetConfigPath = await findNuGetConfigPath();
@@ -62,7 +76,7 @@ export async function fetchPackageVersions(
         }
 
         // Execute nuget list command
-        const command = `nuget list "${packageName}" -AllVersions -Prerelease`;
+        const command = `dotnet package search "${packageName}" --exact-match --format json`;
         const { stdout, stderr } = await execAsync(command, {
             cwd: workingDirectory,
             timeout: 30000, // 30 second timeout
@@ -74,20 +88,18 @@ export async function fetchPackageVersions(
 
         // Parse the output
         const versions: PackageVersion[] = [];
-        const lines = stdout
-            .split("\n")
-            .map((line) => line.trim())
-            .filter((line) => line);
 
-        for (const line of lines) {
-            // NuGet list output format: "PackageName Version"
-            const match = line.match(/^(.+?)\s+([^\s]+)$/);
-            if (match) {
-                const [, name, version] = match;
+        const response: JsonPackageSearchResponse = JSON.parse(stdout);
+
+        for (const source of response.searchResult) {
+            for (const packageVersion of source.packages) {
                 // Check if this line is for our target package (case-insensitive)
-                if (name.toLowerCase() === packageName.toLowerCase()) {
+                if (
+                    packageVersion.id.toLowerCase() ===
+                    packageName.toLowerCase()
+                ) {
                     versions.push({
-                        version: version,
+                        version: packageVersion.version,
                         listed: true,
                     });
                 }
@@ -107,7 +119,7 @@ export async function fetchPackageVersions(
     } catch (error) {
         console.error(
             `Error fetching versions for package ${packageName}:`,
-            error
+            error,
         );
 
         // If NuGet CLI fails, check if it's a command not found error
@@ -118,11 +130,11 @@ export async function fetchPackageVersions(
                     error.message.includes("not recognized"))
             ) {
                 vscode.window.showErrorMessage(
-                    "NuGet CLI not found. Please install NuGet CLI and ensure it's in your PATH."
+                    "NuGet CLI not found. Please install NuGet CLI and ensure it's in your PATH.",
                 );
             } else {
                 vscode.window.showErrorMessage(
-                    `Failed to fetch package versions: ${error.message}`
+                    `Failed to fetch package versions: ${error.message}`,
                 );
             }
         }
@@ -167,7 +179,7 @@ function compareVersions(a: string, b: string): number {
  * source resolution automatically based on nuget.config
  */
 export async function getAvailableVersions(
-    packageName: string
+    packageName: string,
 ): Promise<PackageVersion[]> {
     return await fetchPackageVersions(packageName);
 }
